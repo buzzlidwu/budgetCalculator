@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using budgetCalculator.Interface;
 using budgetCalculator.Models;
 using NSubstitute;
@@ -9,35 +10,28 @@ namespace budgetCalculator.Tests
     public class BudgetCalculatorTests
     {
         private BudgetCalculator _budgetCalculator;
-        private readonly IBudgetRepo _budgetRepo;
-
-        public BudgetCalculatorTests(IBudgetRepo budgetRepo)
-        {
-            _budgetRepo = Substitute.For<IBudgetRepo>();
-        }
+        private IBudgetRepo _budgetRepo;
 
         [SetUp]
         public void SetUp()
         {
-            _budgetCalculator = new BudgetCalculator();
+            _budgetRepo = Substitute.For<IBudgetRepo>();
+            _budgetCalculator = new BudgetCalculator(_budgetRepo);
         }
         [Test]
         public void First_test()
         {
-            var budgetList = new List<Budget>
+            GivenBudgetList(new Budget()
             {
-                new Budget()
-                {
-                    Amount = 31,
-                    YearMonth = "202101"
-                }
-            };
-            GivenBudgetList(budgetList);
+                Amount = 31,
+                YearMonth = "202101"
+            });
+
         }
 
-        private void GivenBudgetList(List<Budget> returnThis)
+        private void GivenBudgetList(params Budget[] returnThis)
         {
-            _budgetRepo.GetAll().Returns(returnThis);
+            _budgetRepo.GetAll().Returns(returnThis.ToList());
         }
     }
 }
