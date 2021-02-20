@@ -1,112 +1,80 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
 using budgetCalculator.Interface;
+using budgetCalculator.Models;
 
 namespace budgetCalculator
 {
     public class BudgetCalculator
     {
-        IBudgetRepo data_source;
+        private readonly IBudgetRepo _budgetRepo;
 
-        public BudgetCalculator(IBudgetRepo repo)
+        public BudgetCalculator(IBudgetRepo budgetRepo)
         {
-            data_source = repo;
-        }
-
-        class BudgetData
-        {
-            public DateTime DT { get; set; }
-            public int Amount { get; set; }
+            _budgetRepo = budgetRepo;
         }
 
         public int Query(DateTime start, DateTime end)
         {
-            var monthDetail = new List<MonthDetail>();
-            var monthRange = getMonthRange(start, end);
-       
-            for (int i = 1; i <= monthRange; i++)
-            {
-                DateTime currentMonthDate;
-                if (i == 1)
-                    currentMonthDate = start;
-                else if (i == monthRange)
-                    currentMonthDate = end;
-                else
-                    currentMonthDate = start.AddMonths(i);
+            if (start > end) return 0;
 
-                var detail = new MonthDetail
-                {
-                    Year = currentMonthDate.Year,
-                    Month = currentMonthDate.Month,
-                    OuterDays = GetOuterDays(i, monthRange, currentMonthDate),
-                    TotalDays = DateTime.DaysInMonth(currentMonthDate.Year, currentMonthDate.Month)
-                };
-                monthDetail.Add(detail);
-            }
+            var allBudget = _budgetRepo.GetAll();
 
-            var budgets = data_source.GetAll();
-            int total = 0;
-            foreach (var month in monthDetail)
-            {
-                var currentMonthsBudget = budgets.Find(budget =>
-                {
-                    var time = DateTime.ParseExact($"{budget.YearMonth}01", "yyyyMM01", null);
-                    return time.Year == month.Year && time.Month == month.Month;
-                });
+            if (allBudget == null) return 0;
 
-                if (currentMonthsBudget != null)
-                {
-                    if (month.OuterDays == 0)
-                        total += currentMonthsBudget.Amount;
-                    else
-                        total += currentMonthsBudget.Amount -
-                                 month.OuterDays * (currentMonthsBudget.Amount / month.TotalDays);
-                }
-            }
+            if (start.Year == end.Year && start.Month == end.Month) return GetFirstMonthAmount(start, allBudget);
 
-            return total;
+            return GetFirstMonthAmount(start, allBudget) + GetMidMonthTotalAmount(start, end, allBudget) +
+                GetLastMonthTotalAmount(end, allBudget);
         }
 
-        private int GetOuterDays(int idx, int monthRange, DateTime currentMonth)
+        private int GetLastMonthTotalAmount(DateTime end, IEnumerable<Budget> allBudget)
         {
-            if (idx == 1) return MathStartOuterDays(currentMonth);
-            return idx == monthRange ? MathEndOuterDays(currentMonth) : DateTime.DaysInMonth(currentMonth.Year, currentMonth.Month);
+            return CalculationBudgetByDays(GetBudgetAmountByYearAndMonth(end, allBudget), GetMonthDaysByTime(end),
+                end.Day);
         }
 
-        private int getMonthRange(DateTime start, DateTime end)
+        private int GetFirstMonthAmount(DateTime start, IEnumerable<Budget> allBudget)
         {
-            int monthRange;
-            if (start.Year == end.Year)
+            var firstMonthTotalDays = GetMonthDaysByTime(start);
+            var needCalculationDays = firstMonthTotalDays - start.Day + 1;
+
+            return CalculationBudgetByDays(GetBudgetAmountByYearAndMonth(start, allBudget), firstMonthTotalDays,
+                needCalculationDays);
+        }
+
+        private int GetMidMonthTotalAmount(DateTime start, DateTime end, IReadOnlyCollection<Budget> allBudget)
+        {
+            var amount = 0;
+            var endTime = new DateTime(end.Year, end.Month, 1).AddSeconds(-1);
+
+            for (var date = start.AddMonths(1); date <= endTime; date = date.AddMonths(1))
+                amount += GetBudgetAmountByYearAndMonth(date, allBudget);
+
+            return amount;
+        }
+
+
+        private int GetMonthDaysByTime(DateTime time)
+        {
+            return DateTime.DaysInMonth(time.Year, time.Month);
+        }
+
+        private int GetBudgetAmountByYearAndMonth(DateTime searchTime, IEnumerable<Budget> allBudget)
+        {
+            return allBudget.FirstOrDefault(budget =>
             {
-                monthRange = end.Month - start.Month + 1;
-            }
-            else
-            {
-                var startMonth = 12 - start.Month + 1;
-                monthRange = startMonth + end.Month;
-            }
-
-            return monthRange;
+                var budgetTime = DateTime.ParseExact(budget.YearMonth, "yyyyMM", CultureInfo.CurrentCulture);
+                return searchTime.Year == budgetTime.Year && searchTime.Month == budgetTime.Month;
+            })?.Amount ?? 0;
         }
 
-        private int MathStartOuterDays(DateTime date)
+
+        private int CalculationBudgetByDays(int amount, int monthTotalDays, int calculationDays)
         {
-            return date.Day - 1;
+            return amount / monthTotalDays * calculationDays;
         }
-        private int MathEndOuterDays(DateTime date)
-        {
-            var daysInMonth = DateTime.DaysInMonth(date.Year, date.Month);
-            return daysInMonth - date.Day;
-        }
-    }
-
-    public class MonthDetail
-    {
-        public int Year { get; set; }
-        public int Month { get; set; }
-
-        public string YearMonth => $"{Year}{Month:00}";
-        public int TotalDays { get; set; }
-        public int OuterDays { get; set; }
     }
 }
