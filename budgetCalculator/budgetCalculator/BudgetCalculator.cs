@@ -1,7 +1,6 @@
-﻿using budgetCalculator.Interface;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Linq;
+using budgetCalculator.Interface;
 
 namespace budgetCalculator
 {
@@ -25,73 +24,73 @@ namespace budgetCalculator
             var monthDetail = new List<MonthDetail>();
             var monthRange = getMonthRange(start, end);
 
-            monthDetail.Add(new MonthDetail()
-            {
-                Year = start.Year,
-                Month = start.Month,
-                TotalDays = MathStartDateMonthDays(start)
-            });
+            //monthDetail.Add(new MonthDetail()
+            //{
+            //    Year = date.Year,
+            //    Month = date.Month,
+            //    TotalDays = MathStartDateMonthDays(date)
+            //});
 
-            for (int i = 1; i < monthRange; i++)
+            for (int i = 1; i <= monthRange; i++)
             {
-                var currentMonth = start.AddMonths(i);
-                monthDetail.Add(new MonthDetail()
+                DateTime currentMonthDate;
+                if (i == 1)
+                    currentMonthDate = start;
+                else if (i == monthRange)
+                    currentMonthDate = end;
+                else
+                    currentMonthDate = start.AddMonths(i);
+
+                var detail = new MonthDetail
                 {
-                    Year = currentMonth.Year,
-                    Month = currentMonth.Month,
-                    TotalDays = MathStartDateMonthDays(currentMonth)
-                });
+                    Year = currentMonthDate.Year,
+                    Month = currentMonthDate.Month,
+                    OuterDays = GetOuterDays(i, monthRange, currentMonthDate),
+                    TotalDays = DateTime.DaysInMonth(currentMonthDate.Year, currentMonthDate.Month)
+                };
+                monthDetail.Add(detail);
             }
 
-            monthDetail.Add(new MonthDetail()
-            {
-                Year = end.Year,
-                Month = end.Month,
-                TotalDays = end.Day
-            });
-
             var budgets = data_source.GetAll();
-            var total = 0;
+            int total = 0;
             foreach (var month in monthDetail)
             {
                 var currentMonthsBudget = budgets.Find(budget =>
-                 {
-                     var time = Convert.ToDateTime(budget.YearMonth);
-                     return time.Year == month.Year && time.Month == month.Month;
-                 });
+                {
+                    var time = DateTime.ParseExact($"{budget.YearMonth}01", "yyyyMM01", null);
+                    return time.Year == month.Year && time.Month == month.Month;
+                });
 
-                //if(
+                if (currentMonthsBudget != null)
+                {
+                    if (month.OuterDays == 0)
+                        total += currentMonthsBudget.Amount;
+                    else
+                        total += currentMonthsBudget.Amount -
+                                 month.OuterDays * (currentMonthsBudget.Amount / month.TotalDays);
+                }
             }
 
-
-            //int nStart = Convert.ToInt16(start.ToString("yyyyMM"));
-            //int nEnd = Convert.ToInt16(end.ToString("yyyyMM"));
-            //data_source.GetAll().Where()
-            //foreach (var d in data_source.GetAll())
-            //{
-            //    BudgetData bd = new BudgetData() {
-            //        DT = DateTime.ParseExact(d.YearMonth, "yyyyMM", null),
-            //        Amount = d.Amount };
-            //    dataList.Add(bd);
-
-            //    //DateTime.DaysInMonth
-            //}
-            //var diff = (end - start).TotalDays();
-
-            return 0;
+            return total;
         }
 
-        private static int getMonthRange(DateTime start, DateTime end)
+        private int GetOuterDays(int idx, int monthRange, DateTime currentMonth)
+        {
+            if (idx == 1) return MathStartOuterDays(currentMonth);
+            return idx == monthRange ? MathEndOuterDays(currentMonth) : DateTime.DaysInMonth(currentMonth.Year, currentMonth.Month);
+        }
+
+        private int getMonthRange(DateTime start, DateTime end)
         {
             int monthRange;
             if (start.Year == end.Year)
             {
-                monthRange = end.Month - start.Month - 1;
+                monthRange = end.Month - start.Month + 1;
             }
             else
             {
-                var startMonth = 12 - start.Month;
-                monthRange = startMonth + end.Month - 1;
+                var startMonth = 12 - start.Month + 1;
+                monthRange = startMonth + end.Month;
             }
 
             return monthRange;
@@ -103,12 +102,25 @@ namespace budgetCalculator
             var startDateMonthDays = DateTime.DaysInMonth(start.Year, start.Month);
             return startDateMonthDays - start.Day + 1;
         }
+
+        private int MathStartOuterDays(DateTime date)
+        {
+            return date.Day - 1;
+        }
+        private int MathEndOuterDays(DateTime date)
+        {
+            var daysInMonth = DateTime.DaysInMonth(date.Year, date.Month);
+            return daysInMonth - date.Day;
+        }
     }
 
     public class MonthDetail
     {
         public int Year { get; set; }
         public int Month { get; set; }
+
+        public string YearMonth => $"{Year}{Month:00}";
         public int TotalDays { get; set; }
+        public int OuterDays { get; set; }
     }
 }
