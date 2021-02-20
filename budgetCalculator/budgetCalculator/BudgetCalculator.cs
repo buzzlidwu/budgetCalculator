@@ -23,14 +23,7 @@ namespace budgetCalculator
         {
             var monthDetail = new List<MonthDetail>();
             var monthRange = getMonthRange(start, end);
-
-            //monthDetail.Add(new MonthDetail()
-            //{
-            //    Year = date.Year,
-            //    Month = date.Month,
-            //    TotalDays = MathStartDateMonthDays(date)
-            //});
-
+       
             for (int i = 1; i <= monthRange; i++)
             {
                 DateTime currentMonthDate;
@@ -94,13 +87,6 @@ namespace budgetCalculator
             }
 
             return monthRange;
-        }
-
-        private int MathStartDateMonthDays(DateTime start)
-        {
-            var dataList = new List<BudgetData>();
-            var startDateMonthDays = DateTime.DaysInMonth(start.Year, start.Month);
-            return startDateMonthDays - start.Day + 1;
         }
 
         private int MathStartOuterDays(DateTime date)
