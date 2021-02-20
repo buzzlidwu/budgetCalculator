@@ -5,13 +5,21 @@ using System.Linq;
 
 namespace budgetCalculator
 {
+    static class Helper
+    {
+        public static int DaysInMonth(this DateTime dt)
+        {
+            return DateTime.DaysInMonth(dt.Year, dt.Month);
+        }
+    }
+
     public class BudgetCalculator
     {
-        IBudgetRepo data_source;
+        IBudgetRepo dataSource;
 
         public BudgetCalculator(IBudgetRepo repo)
         {
-            data_source = repo;
+            dataSource = repo;
         }
 
         class BudgetData
@@ -20,21 +28,53 @@ namespace budgetCalculator
             public int Amount { get; set; }
         }
 
-        public int Query(DateTime start, DateTime end)
+        class MonthData
         {
-            var dataList = new List<BudgetData>();
-            foreach (var d in data_source.GetAll())
+            public int Year { get; set; }
+            public int Month { get; set; }
+            public int DayInMonth { get; set; }
+            public int Amount { get; set; }
+            public int RealDay { get; set; }
+        }
+
+        Dictionary<string, int> dataDict = new Dictionary<string, int>();
+
+
+        private decimal GetAmountInMonth(DateTime dt, int days)
+        {
+            var key = dt.ToString("yyyyMM");
+            var amount = dataDict[key];
+            var daysInMonth = dt.DaysInMonth();
+            return amount * days / daysInMonth;
+        }
+
+        public decimal Query(DateTime start, DateTime end)
+        {
+            if (start > end)
+                return 0;
+
+            foreach (var data in dataSource.GetAll())
+                dataDict.Add(data.YearMonth, data.Amount);
+
+            if (start.Year == end.Year && start.Month == end.Month)
             {
-                BudgetData bd = new BudgetData() {
-                    DT = DateTime.ParseExact(d.YearMonth, "yyyyMM", null),
-                    Amount = d.Amount };
-                dataList.Add(bd);
-
-                //DateTime.DaysInMonth
+                return GetAmountInMonth(start, (end - start).Days + 1);
             }
-            var diff = (end - start).TotalDays();
+            else
+            {
+                decimal amount = 0;
 
-            return 0;
+                amount += GetAmountInMonth(start, start.DaysInMonth() - start.Day + 1);
+                amount += GetAmountInMonth(end, end.Day);
+
+                var monthStart = start.AddDays(-start.Day + 1).AddMonths(1);
+                var monthEnd = end.AddDays(end.DaysInMonth() - end.Day).AddMonths(-1);
+
+                for (var m = monthStart; m <= monthEnd; m = m.AddMonths(1))
+                    amount += GetAmountInMonth(m, m.DaysInMonth());
+
+                return amount;
+            }
         }
     }
 }
