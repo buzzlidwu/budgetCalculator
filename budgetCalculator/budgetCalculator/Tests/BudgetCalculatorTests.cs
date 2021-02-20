@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using budgetCalculator.Interface;
 using budgetCalculator.Models;
@@ -23,15 +22,15 @@ namespace budgetCalculator.Tests
         [Test]
         public void query_jan_month_should_return_jan_budget()
         {
-            GivenBudgetList(new Budget()
+            GivenBudgetList(new Budget
             {
                 Amount = 31,
                 YearMonth = "202101"
             });
 
-            var endDate = new DateTime(2021, 01, 01);
-            var startDate = new DateTime(2021, 01, 31);
-            var budgetAmount = _budgetCalculator.Query(endDate, startDate);
+            var startDate = new DateTime(2021, 01, 01);
+            var endDate = new DateTime(2021, 01, 31);
+            var budgetAmount = _budgetCalculator.Query(startDate, endDate);
 
             Assert.AreEqual(31, budgetAmount);
         }
@@ -40,19 +39,19 @@ namespace budgetCalculator.Tests
         [Test]
         public void query_two_full_month_should_return_two_month_budget()
         {
-            GivenBudgetList(new Budget()
+            GivenBudgetList(new Budget
             {
                 Amount = 31,
                 YearMonth = "202101"
-            }, new Budget()
+            }, new Budget
             {
                 Amount = 28,
                 YearMonth = "202102"
             });
 
-            var endDate = new DateTime(2021, 01, 01);
-            var startDate = new DateTime(2021, 01, 31);
-            var budgetAmount = _budgetCalculator.Query(endDate, startDate);
+            var startDate = new DateTime(2021, 01, 01);
+            var endDate = new DateTime(2021, 02, 28);
+            var budgetAmount = _budgetCalculator.Query(startDate, endDate);
 
             Assert.AreEqual(59, budgetAmount);
         }
@@ -60,21 +59,66 @@ namespace budgetCalculator.Tests
         [Test]
         public void query_cross_month_should()
         {
-            GivenBudgetList(new Budget()
+            GivenBudgetList(new Budget
             {
                 Amount = 31,
                 YearMonth = "202101"
-            }, new Budget()
+            }, new Budget
             {
                 Amount = 28,
                 YearMonth = "202102"
             });
 
-            var endDate = new DateTime(2021, 01, 31);
-            var startDate = new DateTime(2021, 01, 3);
-            var budgetAmount = _budgetCalculator.Query(endDate, startDate);
+            var startDate = new DateTime(2021, 01, 31);
+            var endDate = new DateTime(2021, 02, 3);
+            var budgetAmount = _budgetCalculator.Query(startDate, endDate);
 
             Assert.AreEqual(4, budgetAmount);
+        }
+
+        [Test]
+        public void query_cross_year_should()
+        {
+            GivenBudgetList(new Budget
+            {
+                Amount = 31,
+                YearMonth = "202101"
+            }, new Budget
+            {
+                Amount = 28,
+                YearMonth = "202102"
+            }, new Budget
+            {
+                Amount = 31,
+                YearMonth = "202201"
+            });
+
+            var startDate = new DateTime(2021, 01, 1);
+            var endDate = new DateTime(2022, 01, 31);
+            var budgetAmount = _budgetCalculator.Query(startDate, endDate);
+
+            Assert.AreEqual(90, budgetAmount);
+        }
+
+        [Test]
+        public void should_be_zero_when_start_day_greater_than_end_day()
+        {
+            GivenBudgetList(new Budget
+            {
+                Amount = 31,
+                YearMonth = "202101"
+            }, new Budget
+            {
+                Amount = 28,
+                YearMonth = "202102"
+            });
+
+            var startDate = new DateTime(2021, 01, 31);
+            var endDate = new DateTime(2021, 01, 1);
+
+            var budgetAmount = _budgetCalculator.Query(startDate, endDate);
+
+            Assert.AreEqual(0, budgetAmount);
         }
 
         private void GivenBudgetList(params Budget[] budgetList)

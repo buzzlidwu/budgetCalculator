@@ -1,114 +1,80 @@
-﻿using budgetCalculator.Interface;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using budgetCalculator.Interface;
+using budgetCalculator.Models;
 
 namespace budgetCalculator
 {
     public class BudgetCalculator
     {
-        IBudgetRepo data_source;
+        private readonly IBudgetRepo _budgetRepo;
 
-        public BudgetCalculator(IBudgetRepo repo)
+        public BudgetCalculator(IBudgetRepo budgetRepo)
         {
-            data_source = repo;
-        }
-
-        class BudgetData
-        {
-            public DateTime DT { get; set; }
-            public int Amount { get; set; }
+            _budgetRepo = budgetRepo;
         }
 
         public int Query(DateTime start, DateTime end)
         {
-            var monthDetail = new List<MonthDetail>();
-            var monthRange = getMonthRange(start, end);
+            if (start > end) return 0;
 
-            monthDetail.Add(new MonthDetail()
-            {
-                Year = start.Year,
-                Month = start.Month,
-                TotalDays = MathStartDateMonthDays(start)
-            });
+            var allBudget = _budgetRepo.GetAll();
 
-            for (int i = 1; i < monthRange; i++)
-            {
-                var currentMonth = start.AddMonths(i);
-                monthDetail.Add(new MonthDetail()
-                {
-                    Year = currentMonth.Year,
-                    Month = currentMonth.Month,
-                    TotalDays = MathStartDateMonthDays(currentMonth)
-                });
-            }
+            if (allBudget == null) return 0;
 
-            monthDetail.Add(new MonthDetail()
-            {
-                Year = end.Year,
-                Month = end.Month,
-                TotalDays = end.Day
-            });
+            if (start.Year == end.Year && start.Month == end.Month) return GetFirstMonthAmount(start, allBudget);
 
-            var budgets = data_source.GetAll();
-            var total = 0;
-            foreach (var month in monthDetail)
-            {
-                var currentMonthsBudget = budgets.Find(budget =>
-                 {
-                     var time = Convert.ToDateTime(budget.YearMonth);
-                     return time.Year == month.Year && time.Month == month.Month;
-                 });
-
-                //if(
-            }
-
-
-            //int nStart = Convert.ToInt16(start.ToString("yyyyMM"));
-            //int nEnd = Convert.ToInt16(end.ToString("yyyyMM"));
-            //data_source.GetAll().Where()
-            //foreach (var d in data_source.GetAll())
-            //{
-            //    BudgetData bd = new BudgetData() {
-            //        DT = DateTime.ParseExact(d.YearMonth, "yyyyMM", null),
-            //        Amount = d.Amount };
-            //    dataList.Add(bd);
-
-            //    //DateTime.DaysInMonth
-            //}
-            //var diff = (end - start).TotalDays();
-
-            return 0;
+            return GetFirstMonthAmount(start, allBudget) + GetMidMonthTotalAmount(start, end, allBudget) +
+                GetLastMonthTotalAmount(end, allBudget);
         }
 
-        private static int getMonthRange(DateTime start, DateTime end)
+        private int GetLastMonthTotalAmount(DateTime end, IEnumerable<Budget> allBudget)
         {
-            int monthRange;
-            if (start.Year == end.Year)
-            {
-                monthRange = end.Month - start.Month - 1;
-            }
-            else
-            {
-                var startMonth = 12 - start.Month;
-                monthRange = startMonth + end.Month - 1;
-            }
-
-            return monthRange;
+            return CalculationBudgetByDays(GetBudgetAmountByYearAndMonth(end, allBudget), GetMonthDaysByTime(end),
+                end.Day);
         }
 
-        private int MathStartDateMonthDays(DateTime start)
+        private int GetFirstMonthAmount(DateTime start, IEnumerable<Budget> allBudget)
         {
-            var dataList = new List<BudgetData>();
-            var startDateMonthDays = DateTime.DaysInMonth(start.Year, start.Month);
-            return startDateMonthDays - start.Day + 1;
-        }
-    }
+            var firstMonthTotalDays = GetMonthDaysByTime(start);
+            var needCalculationDays = firstMonthTotalDays - start.Day + 1;
 
-    public class MonthDetail
-    {
-        public int Year { get; set; }
-        public int Month { get; set; }
-        public int TotalDays { get; set; }
+            return CalculationBudgetByDays(GetBudgetAmountByYearAndMonth(start, allBudget), firstMonthTotalDays,
+                needCalculationDays);
+        }
+
+        private int GetMidMonthTotalAmount(DateTime start, DateTime end, IReadOnlyCollection<Budget> allBudget)
+        {
+            var amount = 0;
+            var endTime = new DateTime(end.Year, end.Month, 1).AddSeconds(-1);
+
+            for (var date = start.AddMonths(1); date <= endTime; date = date.AddMonths(1))
+                amount += GetBudgetAmountByYearAndMonth(date, allBudget);
+
+            return amount;
+        }
+
+
+        private int GetMonthDaysByTime(DateTime time)
+        {
+            return DateTime.DaysInMonth(time.Year, time.Month);
+        }
+
+        private int GetBudgetAmountByYearAndMonth(DateTime searchTime, IEnumerable<Budget> allBudget)
+        {
+            return allBudget.FirstOrDefault(budget =>
+            {
+                var budgetTime = DateTime.ParseExact(budget.YearMonth, "yyyyMM", CultureInfo.CurrentCulture);
+                return searchTime.Year == budgetTime.Year && searchTime.Month == budgetTime.Month;
+            })?.Amount ?? 0;
+        }
+
+
+        private int CalculationBudgetByDays(int amount, int monthTotalDays, int calculationDays)
+        {
+            return amount / monthTotalDays * calculationDays;
+        }
     }
 }
