@@ -13,4 +13,10 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.5.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Interface\" />
+    <Folder Include="Models\" />
+    <Folder Include="Repo\" />
+  </ItemGroup>
+
 </Project>
