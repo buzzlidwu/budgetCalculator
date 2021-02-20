@@ -79,11 +79,11 @@ namespace budgetCalculator.Tests
         [Test]
         public void query_cross_year_month_should()
         {
-            GivenBudgetList(new Budget()
+            GivenBudgetList(new Budget
             {
                 Amount = 31,
                 YearMonth = "202012"
-            }, new Budget()
+            }, new Budget
             {
                 Amount = 62,
                 YearMonth = "202101"
@@ -99,7 +99,7 @@ namespace budgetCalculator.Tests
         [Test]
         public void query_lack_of_data_should()
         {
-            GivenBudgetList(new Budget()
+            GivenBudgetList(new Budget
             {
                 Amount = 31,
                 YearMonth = "202012"
