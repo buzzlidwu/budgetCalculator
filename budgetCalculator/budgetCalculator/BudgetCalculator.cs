@@ -1,5 +1,7 @@
 ﻿using budgetCalculator.Interface;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace budgetCalculator
 {
@@ -12,9 +14,19 @@ namespace budgetCalculator
             data_source = repo;
         }
 
+        class BudgetData
+        {
+            public DateTime dateTime { get; set; }
+            public int Amount { get; set; }
+        }
+
         public decimal Query(DateTime start, DateTime end)
         {
-            var data = data_source.GetAll();
+            List<string> strs = new List<string>();
+            strs.Add(start.ToString("YYYYMM"));
+            strs.Add(end.ToString("YYYYMM"));
+
+            data_source.GetAll().Where(x => strs.Contains(x.YearMonth));
             return 0;
         }
     }
