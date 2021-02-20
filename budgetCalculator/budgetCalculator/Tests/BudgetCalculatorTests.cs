@@ -19,19 +19,18 @@ namespace budgetCalculator.Tests
             _budgetCalculator = new BudgetCalculator(_budgetRepo);
         }
         [Test]
-        public void First_test()
+        public void query_jan_month_should_return_jan_budget()
         {
             GivenBudgetList(new Budget()
             {
                 Amount = 31,
                 YearMonth = "202101"
             });
-
         }
 
-        private void GivenBudgetList(params Budget[] returnThis)
+        private void GivenBudgetList(params Budget[] budgetList)
         {
-            _budgetRepo.GetAll().Returns(returnThis.ToList());
+            _budgetRepo.GetAll().Returns(budgetList.ToList());
         }
     }
 }
